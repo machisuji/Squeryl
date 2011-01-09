@@ -9,10 +9,17 @@ import org.squeryl.adapters.H2Adapter
 class Issue80 extends Specification {
   val session = createTestConnection
   
-  initSessionFactory(session)
-  org.squeryl.PrimitiveTypeMode.using(session) {
-    Population.create
-    Population.printDdl
+  doBeforeSpec {
+    initSessionFactory(session)
+    org.squeryl.PrimitiveTypeMode.using(session) {
+      try {
+        Population.create
+        Population.printDdl
+      } catch {
+        case ex: Throwable =>
+          System.err.println(ex.getClass().getSimpleName() + ": " + ex.getMessage())
+      }
+    }
   }
   
   "Common people" should {
@@ -20,7 +27,7 @@ class Issue80 extends Specification {
       import org.squeryl.PrimitiveTypeMode._
       using(session) {
         val people = from(Population.commonPeople)(p => select(p))
-        val guy = new PrimeChild
+        val guy = new CommonsChild("Hans", "Wurst")
         people must haveSize (0)
         transaction {
           Population.commonPeople.insert(guy)
@@ -78,22 +85,15 @@ trait UniqueName extends Identity with KeyedEntity[CompositeKey2[String, String]
 class CommonsChild(
   firstName: String,
   lastName: String,
-  val parentId: Long = 0
+  val parentId: Option[Long] = None
 ) extends Person(firstName, lastName) with CommonName with CommonChildren {
-  lazy val parent: ManyToOne[CommonsChild] =
-    Population.commonPeoplesChildren.right(this)
-  def this() = this("", "", 0)
+  lazy val parent: Option[ManyToOne[CommonsChild]] =
+    if (parentId.isDefined) Some(Population.commonPeoplesChildren.right(this))
+    else None
+  def this() = this("", "", Some(0l))
   def this(firstName: String, lastName: String, parent: CommonsChild) = {
     this(firstName, lastName)
     parent.children.assign(this)
-  }
-}
-
-class PrimeChild(firstName: String, lastName: String, parentId: Long)
-    extends CommonsChild(firstName, lastName, parentId) {
-  def this() = {
-    this("Prime", "Child", 0)
-    children.assign(this)
   }
 }
 
@@ -120,14 +120,16 @@ trait CommonChildren { this: CommonsChild =>
 // A person of this population does not need a partner to reproduce itself.
 object Population extends Schema {
   val commonPeople = table[CommonsChild]
-  //val uniquePeople = table[UniquesChild]
   
   val commonPeoplesChildren =
     oneToManyRelation(commonPeople, commonPeople).via { (parent, child) =>
       parent.id === child.parentId
     }
 
+
   /*@TODO Make the following compile:
+  val uniquePeople = table[UniquesChild]
+
   val uniquePeoplesChildren: OneToManyRelation[UniquesChild, UniquesChild] =
     oneToManyRelation(uniquePeople, uniquePeople).via { (parent, child) =>
       parent.id === child.parentId
