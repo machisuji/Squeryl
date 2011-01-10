@@ -19,21 +19,6 @@ class Issue80 extends Specification with TestConnection {
     }
   }
   
-  "Common people" should {
-    "Foreign keys should be nullable (issue 60)" in {
-      import org.squeryl.PrimitiveTypeMode._
-      using(session) {
-        val people = from(Population.commonPeople)(p => select(p))
-        val guy = new CommonsChild("Hans", "Wurst")
-        people must haveSize (0)
-        transaction {
-          Population.commonPeople.insert(guy)
-        }
-        people must haveSize (1)
-      }
-    }
-  }
-  
   "Normal keys" should {
     "be usable in binding expressions for relations" in {
       // pending
@@ -56,88 +41,58 @@ import org.squeryl.dsl.OneToManyRelation
 import org.squeryl.PrimitiveTypeMode._
 import org.squeryl.annotations._
 
+class Address(
+  val street: String,
+  val postalCode: String
+)
 class Person(
   val firstName: String,
   val lastName: String
 )
-trait Identity
-trait CommonName extends Identity with KeyedEntity[Long] {
+
+trait CommonName extends KeyedEntity[Long] { this: Person =>
   val id: Long = 0
+  val addresses: OneToMany[CommonsAddress] = Population.commonPersonToAddress.left(this)
 }
-trait UniqueName extends Identity with KeyedEntity[CompositeKey2[String, String]] {
+trait UniqueName extends KeyedEntity[CompositeKey2[String, String]] { this: Person =>
   val firstName: String
   val lastName: String
   def id = compositeKey(firstName, lastName)
+  val addresses: OneToMany[UniquesAddress] = Population.uniquePersonToAddress.left(this)
 }
 
-class CommonsChild(
-  firstName: String,
-  lastName: String,
-  val parentId: Option[Long] = None
-) extends Person(firstName, lastName) with CommonName with CommonChildren {
-  lazy val parent: Option[ManyToOne[CommonsChild]] =
-    if (parentId.isDefined) Some(Population.commonPeoplesChildren.right(this))
-    else noParent
-  def this() = this(null, null, Some(0L))
-  def this(firstName: String, lastName: String, parent: CommonsChild) = {
-    this(firstName, lastName)
-    parent.children.assign(this)
-  }
-  private def noParent =
-    if (firstName == null && lastName == null) {
-      println("Returning Some with null value")
-      Some[ManyToOne[CommonsChild]](null)
-    } else None
+class CommonsAddress(
+  street: String,
+  postalCode: String,
+  val personId: Long
+) extends Address(street, postalCode) {
+  val person: ManyToOne[Person with CommonName] = Population.commonPersonToAddress.right(this)
 }
 
-/*class UniquesChild(
-  firstName: String,
-  lastName: String,
-  val parentId: CompositeKey2[String, String] = null
-) extends Person(firstName, lastName) with UniqueName with UniqueChildren {
-  lazy val parent: ManyToOne[UniquesChild] = Population.uniquePeoplesChildren.right(this)
-  def this() = this("", "", new CompositeKey2[String, String]("", ""))
-  def this(firstName: String, lastName: String, parent: UniquesChild) = {
-    this(firstName, lastName)
-    parent.children.assign(this)
-  }
-}*/
-
-trait CommonChildren { this: CommonsChild =>
-  lazy val children: OneToMany[CommonsChild] = Population.commonPeoplesChildren.left(this)
+class UniquesAddress(
+  street: String,
+  postalCode: String,
+  val personId: CompositeKey2[String, String]
+) extends Address(street, postalCode) {
+  val person: ManyToOne[Person with UniqueName] = Population.uniquePersonToAddress.right(this)
 }
-/*trait UniqueChildren { this: UniquesChild =>
-  lazy val children: OneToMany[UniquesChild] = Population.uniquePeoplesChildren.left(this)
-}*/
 
-// A person of this population does not need a partner to reproduce itself.
 object Population extends Schema {
-  println("What the!?")
-  var commonPeople: Table[CommonsChild] = null
-  try {
-    commonPeople = table[CommonsChild]
-  } catch {
-    case ex: Throwable => ex.printStackTrace
-  }
-  println("That !?")
+
+  val commonPeople = table[Person with CommonName]
+  val uniquePeople = table[Person with UniqueName]
   
-  val commonPeoplesChildren = {
-    println("Initialising common people's children")
-    val rel = oneToManyRelation(commonPeople, commonPeople)
-    println("Done: " + rel)
-    rel.via { (parent, child) =>
-      parent.id === child.parentId
-    }
+  val commonsAddresses = table[CommonsAddress]
+  val uniquesAddresses = table[UniquesAddress]
+  
+  val commonPersonToAddress = {
+    val rel = oneToManyRelation(commonPeople, commonsAddresses)
+    rel.via((person, address) => person.id === address.personId)
   }
-
-  /*@TODO Make the following compile:
-  val uniquePeople = table[UniquesChild]
-
-  val uniquePeoplesChildren: OneToManyRelation[UniquesChild, UniquesChild] =
-    oneToManyRelation(uniquePeople, uniquePeople).via { (parent, child) =>
-      parent.id === child.parentId
-    }
-  */
+  val uniquePersonToAddress = {
+    val rel = oneToManyRelation(uniquePeople, uniquesAddresses)
+    rel.via((person, address) => person.id === address.personId)
+  }
   
   override def drop = super.drop
 }
