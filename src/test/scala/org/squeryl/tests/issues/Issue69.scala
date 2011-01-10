@@ -25,11 +25,9 @@ class Issue69 extends Specification with TestConnection {
       using(session) {
         val node = new Node("Root") // has no parent!
         from(Graph.nodes)(n => select(n)) must haveSize (0)
-        println("Persisted: " + node.isPersisted)
         transaction {
           Graph.nodes.insert(node)
         }
-        println("Persisted: " + node.isPersisted)
         from(Graph.nodes)(n => select(n)) must haveSize (1)
       }
     }
