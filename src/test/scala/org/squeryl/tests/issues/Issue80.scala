@@ -6,11 +6,8 @@ import java.sql.{Connection, DriverManager}
 import org.squeryl.{Session, SessionFactory}
 import org.squeryl.adapters.H2Adapter
 
-class Issue80 extends Specification {
-  val session = createTestConnection
-  
+class Issue80 extends Specification with TestConnection {
   doBeforeSpec {
-    initSessionFactory(session)
     org.squeryl.PrimitiveTypeMode.using(session) {
       try {
         Population.create
@@ -47,26 +44,17 @@ class Issue80 extends Specification {
       // pending
     }
   }
-  
-  def createTestConnection = {
-    Class.forName("org.h2.Driver");
-    Session.create(
-      java.sql.DriverManager.getConnection("jdbc:h2:mem:test", "sa", ""),
-      new H2Adapter
-    )
-  }
-  def initSessionFactory(session: Session) {
-    SessionFactory.concreteFactory = Some(() => session)
-  }
 }
 
 import org.squeryl.Schema
+import org.squeryl.Table
 import org.squeryl.KeyedEntity
 import org.squeryl.dsl.CompositeKey2
 import org.squeryl.dsl.ManyToOne
 import org.squeryl.dsl.OneToMany
 import org.squeryl.dsl.OneToManyRelation
 import org.squeryl.PrimitiveTypeMode._
+import org.squeryl.annotations._
 
 class Person(
   val firstName: String,
@@ -89,12 +77,17 @@ class CommonsChild(
 ) extends Person(firstName, lastName) with CommonName with CommonChildren {
   lazy val parent: Option[ManyToOne[CommonsChild]] =
     if (parentId.isDefined) Some(Population.commonPeoplesChildren.right(this))
-    else None
-  def this() = this("", "", Some(0l))
+    else noParent
+  def this() = this(null, null, Some(0L))
   def this(firstName: String, lastName: String, parent: CommonsChild) = {
     this(firstName, lastName)
     parent.children.assign(this)
   }
+  private def noParent =
+    if (firstName == null && lastName == null) {
+      println("Returning Some with null value")
+      Some[ManyToOne[CommonsChild]](null)
+    } else None
 }
 
 /*class UniquesChild(
@@ -119,13 +112,23 @@ trait CommonChildren { this: CommonsChild =>
 
 // A person of this population does not need a partner to reproduce itself.
 object Population extends Schema {
-  val commonPeople = table[CommonsChild]
+  println("What the!?")
+  var commonPeople: Table[CommonsChild] = null
+  try {
+    commonPeople = table[CommonsChild]
+  } catch {
+    case ex: Throwable => ex.printStackTrace
+  }
+  println("That !?")
   
-  val commonPeoplesChildren =
-    oneToManyRelation(commonPeople, commonPeople).via { (parent, child) =>
+  val commonPeoplesChildren = {
+    println("Initialising common people's children")
+    val rel = oneToManyRelation(commonPeople, commonPeople)
+    println("Done: " + rel)
+    rel.via { (parent, child) =>
       parent.id === child.parentId
     }
-
+  }
 
   /*@TODO Make the following compile:
   val uniquePeople = table[UniquesChild]
