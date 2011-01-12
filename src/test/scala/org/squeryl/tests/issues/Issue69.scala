@@ -91,7 +91,7 @@ class Issue69 extends Specification with TestConnection {
         transaction {
           Graph.nodes.deleteWhere(n => n.name === "Root")
         }
-        getNodes must haveSize(1) // since no more referenced, deletion should be allowed
+        getNodes must haveSize(1) // since no longer referenced, deletion should be allowed
       }
     }
     
@@ -115,6 +115,8 @@ class Issue69 extends Specification with TestConnection {
           else println("-")
         }
         nodes must haveSize(2)
+        println("\nSchema:\n")
+        Graph.printDdl
       }
     }
   }
