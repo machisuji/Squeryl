@@ -7,8 +7,8 @@ import org.squeryl.{Session, SessionFactory}
 import org.squeryl.adapters.H2Adapter
 
 trait TestConnection {
-  val session = createTestConnection
-  initSessionFactory(session)
+  initSessionFactory()
+  val session = SessionFactory.newSession
   
   def createTestConnection = {
     Class.forName("org.h2.Driver");
@@ -17,7 +17,7 @@ trait TestConnection {
       new H2Adapter
     )
   }
-  def initSessionFactory(session: Session) {
-    SessionFactory.concreteFactory = Some(() => session)
+  def initSessionFactory() {
+    SessionFactory.concreteFactory = Some(() => createTestConnection)
   }
 }

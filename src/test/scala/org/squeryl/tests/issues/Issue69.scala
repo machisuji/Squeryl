@@ -24,11 +24,47 @@ class Issue69 extends Specification with TestConnection {
       import org.squeryl.PrimitiveTypeMode._
       using(session) {
         val node = new Node("Root") // has no parent!
-        from(Graph.nodes)(n => select(n)) must haveSize (0)
+        val getNodes = from(Graph.nodes)(n => select(n))
+        getNodes must haveSize (0)
         transaction {
           Graph.nodes.insert(node)
         }
-        from(Graph.nodes)(n => select(n)) must haveSize (1)
+        getNodes must haveSize (1)
+        node.parent must haveSize (0)
+        node.children must haveSize (0)
+      }
+    }
+    
+    "however, be able to have a parent." in {
+      import org.squeryl.PrimitiveTypeMode._
+      using(session) {
+        val node = new Node("Adam")
+        val getRoot = from(Graph.nodes)(n => where(n.name === "Root") select(n))
+        val root = getRoot.head
+        root.children must haveSize(0)
+        transaction {
+          Graph.nodes.insert(node)
+          node.parent must haveSize (0)
+          root.children.associate(node)
+        }
+        val children = getRoot.head.children.toList
+        children must haveSize(1)
+        children(0) mustEqual node
+      }
+    }
+    
+    "let me see ..." in {
+      import org.squeryl.PrimitiveTypeMode._
+      using(session) {
+        val nodes = from(Graph.nodes)(select(_)).toList
+        println("\tID\tNAME\tPARENT_ID")
+        nodes.foreach { node =>
+          print("\t" + node.id + "\t" + node.name + "\t")
+          val parent = node.parent.headOption
+          if (parent.isDefined) println(parent.get.id)
+          else println("-")
+        }
+        nodes must haveSize(2)
       }
     }
   }
