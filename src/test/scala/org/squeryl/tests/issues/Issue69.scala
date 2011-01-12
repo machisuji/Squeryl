@@ -5,13 +5,14 @@ import org.specs._
 import java.sql.{Connection, DriverManager}
 import org.squeryl.{Session, SessionFactory}
 import org.squeryl.adapters.H2Adapter
+import org.squeryl.PrimitiveTypeMode
 
 class Issue69 extends Specification with TestConnection {
-  doBeforeSpec {
-    org.squeryl.PrimitiveTypeMode.using(session) {
+  
+  def createSchema() {
+    PrimitiveTypeMode.using(session) {
       try {
         Graph.create
-        Graph.printDdl
       } catch {
         case ex: Throwable =>
           System.err.println(ex.getClass().getSimpleName() + ": " + ex.getMessage())
@@ -19,42 +20,91 @@ class Issue69 extends Specification with TestConnection {
     }
   }
   
-  "A Node" should {
-    "[Issue 69] not need to have a parent (nullable foreign key)." in {
-      import org.squeryl.PrimitiveTypeMode._
+  "Squeryl" should {
+    
+    doBefore {
+      import PrimitiveTypeMode._
+      createSchema()
       using(session) {
-        val node = new Node("Root") // has no parent!
-        val getNodes = from(Graph.nodes)(n => select(n))
-        getNodes must haveSize (0)
+        val root = new Node("Root")
         transaction {
-          Graph.nodes.insert(node)
+          Graph.nodes.insert(root)
         }
-        getNodes must haveSize (1)
-        node.parent must haveSize (0)
-        node.children must haveSize (0)
+        val adam = new Node("Adam")
+        transaction {
+          Graph.nodes.insert(adam)
+          root.children.associate(adam)
+        }
       }
     }
     
-    "however, be able to have a parent." in {
-      import org.squeryl.PrimitiveTypeMode._
-      using(session) {
-        val node = new Node("Adam")
-        val getRoot = from(Graph.nodes)(n => where(n.name === "Root") select(n))
-        val root = getRoot.head
-        root.children must haveSize(0)
-        transaction {
-          Graph.nodes.insert(node)
-          node.parent must haveSize (0)
-          root.children.associate(node)
-        }
-        val children = getRoot.head.children.toList
-        children must haveSize(1)
-        children(0) mustEqual node
+    doAfter {
+      PrimitiveTypeMode.using(session) {
+        Graph.drop
       }
+    }
+  
+    "support (optional) foreign keys." in {
+      import PrimitiveTypeMode._
+      using(session) {
+        val getRoot = from(Graph.nodes)(n => where(n.name === "Root") select(n))
+        val root = getRoot.headOption.getOrElse(fail("Root not found"))
+        root.parent must beEmpty
+        
+        val getAdam = from(Graph.nodes)(n => where(n.name === "Adam") select(n))
+        val adam = getAdam.headOption.getOrElse(fail("Adam not found"))
+        adam.parent must beEmpty.not
+        adam.parent.head mustEqual root
+        root.children must contain(adam)
+      }
+    }
+    
+    "allow foreign keys to be set to None." in {
+      import PrimitiveTypeMode._
+      using(session) {
+        val (adam, parent) = getAdamAndHisParent
+        adam.parent must beEmpty.not // in one moment it still has a parent
+        transaction {
+          adam.parentId = None
+          Graph.nodes.update(adam)
+        }
+        adam.parent must beEmpty // and in the next ... no more!
+      }
+    }
+    
+    "allow deletion of no longer referenced rows." in {
+      import PrimitiveTypeMode._
+      using(session) {
+        val (adam, parent) = getAdamAndHisParent
+        def illegalAction = {
+          transaction {
+            adam.parent.delete
+          }
+        }
+        illegalAction must throwAn[Exception] // still referenced, do not allow deletion
+        transaction {
+          adam.parentId = None
+          Graph.nodes.update(adam)
+        }
+        val getNodes = from(Graph.nodes)(select(_))
+        getNodes must haveSize(2)
+        transaction {
+          Graph.nodes.deleteWhere(n => n.name === "Root")
+        }
+        getNodes must haveSize(1) // since no more referenced, deletion should be allowed
+      }
+    }
+    
+    def getAdamAndHisParent: (Node, Node) = {
+      import PrimitiveTypeMode._
+      val getAdam = from(Graph.nodes)(n => where(n.name === "Adam") select(n))
+      val adam = getAdam.headOption.getOrElse(fail("Could not find Adam!"))
+      val parent = adam.parent.headOption.getOrElse(fail("Adam has no parent!"))
+      (adam, parent)
     }
     
     "let me see ..." in {
-      import org.squeryl.PrimitiveTypeMode._
+      import PrimitiveTypeMode._
       using(session) {
         val nodes = from(Graph.nodes)(select(_)).toList
         println("\tID\tNAME\tPARENT_ID")
@@ -77,7 +127,7 @@ import org.squeryl.PrimitiveTypeMode._
 class Node(
   val name: String,
   val id: Long = 0,
-  val parentId: Option[Long] = None
+  var parentId: Option[Long] = None
 ) extends KeyedEntity[Long] {
   def this() = this("", 0, Some(0L))
   def parent: ManyToOne[Node] = Graph.parentChildRelation.right(this)
