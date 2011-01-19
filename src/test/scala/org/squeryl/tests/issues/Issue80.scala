@@ -33,8 +33,8 @@ class Issue80 extends Spec with ShouldMatchers with TestConnection {
     it("should be able to have several addresses") {
       val person = new CommonPerson("Markus", "Kahl")
       transaction {
-        val addr1 = new CommonsAddress("Neuendorfer Str. 101", "13585")
-        val addr2 = new CommonsAddress("Potsdamer Allee 26", "14669")
+        val addr1 = new CommonsAddress("Berliner Str. 99", "54321")
+        val addr2 = new CommonsAddress("Breite Straße 3", "12345")
         Population.commonPeople.insert(person)
         person.addresses.associate(addr1)
         person.addresses.associate(addr2)
