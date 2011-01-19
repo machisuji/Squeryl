@@ -106,7 +106,6 @@ trait ListString extends ListExpressionNode {
   override def quotesElement = true
 }
 
-// class EqualityExpression(/*override val */left: TypedExpressionNode[_], /*override val */right: TypedExpressionNode[_]) extends BinaryOperatorNodeLogicalBoolean(left, right, "=")
 trait EqualityExpression extends ExpressionNode with LogicalBoolean {
   def fieldMetaData: Iterable[(FieldMetaData, FieldMetaData)]
 }
@@ -127,6 +126,19 @@ class CompositeEqualityExpression
 object EqualityExpression {
   def apply(left: TypedExpressionNode[_], right: TypedExpressionNode[_]) =
     new FlatEqualityExpression(left, right)
+
+  def isEqualityExpression(exprNode: ExpressionNode): Boolean = {
+    if (!exprNode.isInstanceOf[BinaryOperatorNodeLogicalBoolean]) return false
+    val node = exprNode.asInstanceOf[BinaryOperatorNodeLogicalBoolean]
+    def isEqualityExpressionLeaf(node: BinaryOperatorNodeLogicalBoolean): Boolean =
+      if (node.children.size == 2 && node.operatorToken == "=") {
+        node.children.forall(_.isInstanceOf[TypedExpressionNode[_]] && true)
+        // the "&& true" is required because otherwise the forall does not work due to some Predef implicit
+      } else false
+    isEqualityExpressionLeaf(node) ||
+      (List("and", "or").contains(node.operatorToken) &&
+       node.children.forall(isEqualityExpression(_)))
+  }
 }
 
 class InListExpression(left: ExpressionNode, right: ListExpressionNode, inclusion: Boolean) extends BinaryOperatorNodeLogicalBoolean(left, right, if(inclusion) "in" else "not in") {
@@ -203,7 +215,6 @@ trait LogicalBoolean extends ExpressionNode  {
   def and(b: LogicalBoolean) = new BinaryOperatorNodeLogicalBoolean(this, b, "and")
   def or(b: LogicalBoolean) = new BinaryOperatorNodeLogicalBoolean(this, b, "or")
 }
-
 
 class UpdateAssignment(val left: FieldMetaData, val right: ExpressionNode)
 
