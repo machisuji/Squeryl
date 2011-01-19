@@ -42,7 +42,7 @@ trait CompositeKey {
     val it1 = members.map(_.asInstanceOf[TypedExpressionNode[_]])
     val it2 = ck.members.map(_.asInstanceOf[TypedExpressionNode[_]])
 
-    new CompositeEqualityExpression(it1 zip it2)
+    EqualityExpression(it1 zip it2)
   }
 
   def is(attributes: AttributeValidOnMultipleColumn*) = new CompositeKeyAttributeAssignment(this, attributes)  

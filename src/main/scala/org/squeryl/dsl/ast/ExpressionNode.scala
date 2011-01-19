@@ -107,7 +107,7 @@ trait ListString extends ListExpressionNode {
 }
 
 trait EqualityExpression extends ExpressionNode with LogicalBoolean {
-  /**A list of tuples of corresponding FieldMetaData objects for
+  /**A list of tuples of corresponding FieldMetaData objects
    * for this equality. Given the clause "x = y AND y = z"
    * this would be (x.fmd, y.fmd) :: (y.fmd, z.fmd) :: Nil.
    *
@@ -154,21 +154,12 @@ object EqualityExpression {
   def apply(left: TypedExpressionNode[_], right: TypedExpressionNode[_]) =
     new FlatEqualityExpression(left, right)
 
-  def isEqualityExpression(exprNode: ExpressionNode): Boolean = {
-    if (!exprNode.isInstanceOf[BinaryOperatorNodeLogicalBoolean]) return false
-    val node = exprNode.asInstanceOf[BinaryOperatorNodeLogicalBoolean]
-    def isEqualityExpressionLeaf(node: BinaryOperatorNodeLogicalBoolean): Boolean =
-      if (node.children.size == 2 && node.operatorToken == "=") {
-        node.children.forall(_.isInstanceOf[TypedExpressionNode[_]] && true)
-        // the "&& true" is required because otherwise the forall does not work due to some Predef implicit
-      } else false
-    isEqualityExpressionLeaf(node) ||
-      (List("and", "or").contains(node.operatorToken) &&
-       node.children.forall(isEqualityExpression(_)))
+  def apply(leftRightTuple: (TypedExpressionNode[_], TypedExpressionNode[_])) {
+    new FlatEqualityExpression(leftRightTuple._1, leftRightTuple._2)
   }
 
-  def from(tuple: (TypedExpressionNode[_], TypedExpressionNode[_])) =
-    new FlatEqualityExpression(tuple._1, tuple._2)
+  def apply(leftRightTuples: Iterable[(TypedExpressionNode[_], TypedExpressionNode[_])]) =
+    new CompositeEqualityExpression(leftRightTuples)
 }
 
 class InListExpression(left: ExpressionNode, right: ListExpressionNode, inclusion: Boolean) extends BinaryOperatorNodeLogicalBoolean(left, right, if(inclusion) "in" else "not in") {
