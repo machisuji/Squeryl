@@ -82,12 +82,12 @@ class CommonPerson(
   lastName: String
 ) extends Person(firstName, lastName) with CommonName
 
-/*trait UniqueName extends KeyedEntity[CompositeKey2[String, String]] { this: Person =>
+trait UniqueName extends KeyedEntity[CompositeKey2[String, String]] { this: Person =>
   val firstName: String
   val lastName: String
   def id = compositeKey(firstName, lastName)
   val addresses: OneToMany[UniquesAddress] = Population.uniquePersonToAddress.left(this)
-}*/
+}
 
 class CommonsAddress(
   street: String,
@@ -97,21 +97,21 @@ class CommonsAddress(
   lazy val person: ManyToOne[CommonPerson] = Population.commonPersonToAddress.right(this)
 }
 
-/*class UniquesAddress(
+class UniquesAddress(
   street: String,
   postalCode: String,
   val personId: CompositeKey2[String, String]
 ) extends Address(street, postalCode) {
   val person: ManyToOne[Person with UniqueName] = Population.uniquePersonToAddress.right(this)
-}*/
+}
 
 object Population extends Schema {
 
   val commonPeople = table[CommonPerson]
-  //val uniquePeople = table[Person with UniqueName]
+  val uniquePeople = table[Person with UniqueName]
   
   val commonsAddresses = table[CommonsAddress]
-  //val uniquesAddresses = table[UniquesAddress]
+  val uniquesAddresses = table[UniquesAddress]
   
   val commonPersonToAddress = {
     val rel = oneToManyRelation(commonPeople, commonsAddresses)
@@ -119,10 +119,10 @@ object Population extends Schema {
         person.id === address.personId
     })
   }
-  /*val uniquePersonToAddress = {
+  val uniquePersonToAddress = {
     val rel = oneToManyRelation(uniquePeople, uniquesAddresses)
-    rel.via((person, address) => (person.id === address.personId).toEqualityExpression)
-  }*/
+    rel.via((person, address) => person.id === address.personId)
+  }
   
   override def drop = super.drop
 }

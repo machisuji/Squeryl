@@ -37,27 +37,12 @@ trait CompositeKey {
   protected def members: Iterable[ExpressionNode] =
     _members.getOrElse(constantMembers)
 
-  private [squeryl] def buildEquality(ck: CompositeKey): LogicalBoolean = {
+  private [squeryl] def buildEquality(ck: CompositeKey): EqualityExpression = {
 
-    val it1 = members.iterator
-    val it2 = ck.members.iterator
+    val it1 = members.map(_.asInstanceOf[TypedExpressionNode[_]])
+    val it2 = ck.members.map(_.asInstanceOf[TypedExpressionNode[_]])
 
-    // the type system guaranties that it1 and it2 have the same length
-
-    val equalities = new ArrayBuffer[LogicalBoolean]
-
-    while(it1.hasNext) {
-      val n1 = it1.next
-      val n2 = it2.next
-      val e = new BinaryOperatorNodeLogicalBoolean(n1, n2, "=")
-      equalities.append(e)
-    }
-
-    val first = equalities.remove(1)
-
-    val r = equalities.foldLeft(first)((b,a) => new BinaryOperatorNodeLogicalBoolean(a, b, "and"))
-
-    r
+    new CompositeEqualityExpression(it1 zip it2)
   }
 
   def is(attributes: AttributeValidOnMultipleColumn*) = new CompositeKeyAttributeAssignment(this, attributes)  

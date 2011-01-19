@@ -107,6 +107,12 @@ trait ListString extends ListExpressionNode {
 }
 
 trait EqualityExpression extends ExpressionNode with LogicalBoolean {
+  /**A list of tuples of corresponding FieldMetaData objects for
+   * for this equality. Given the clause "x = y AND y = z"
+   * this would be (x.fmd, y.fmd) :: (y.fmd, z.fmd) :: Nil.
+   *
+   * (fmd == FieldMetaData)
+   */
   def fieldMetaData: Iterable[(FieldMetaData, FieldMetaData)]
 }
 
@@ -120,8 +126,29 @@ class FlatEqualityExpression(
 }
 
 /**An EqualityExpression with several clauses, such as "(x = y) AND (y = z) AND (x = z)."
+ * A CompositeEqualityExpression consists of at least two simple Equalities
+ * (equalNodes.size must be >= 2).
  */
-class CompositeEqualityExpression
+class CompositeEqualityExpression(
+  val equalNodes: Iterable[(TypedExpressionNode[_], TypedExpressionNode[_])]
+) extends BinaryOperatorNodeLogicalBoolean(
+  Binary(equalNodes.head, "="),
+  equalNodes.drop(2).foldLeft(Binary(equalNodes.tail.head, "=")) { (acc, node) =>
+    Binary(acc, Binary(node, "="), "and")
+  },
+  "and"
+) with EqualityExpression {
+  def fieldMetaData = equalNodes.map { equal =>
+    (equal._1._fieldMetaData, equal._2._fieldMetaData)
+  }
+}
+
+object Binary {
+  def apply(left: ExpressionNode, right: ExpressionNode, operator: String) =
+    new BinaryOperatorNodeLogicalBoolean(left, right, operator)
+  def apply(tuple: (ExpressionNode, ExpressionNode), operator: String) =
+    new BinaryOperatorNodeLogicalBoolean(tuple._1, tuple._2, operator)
+}
 
 object EqualityExpression {
   def apply(left: TypedExpressionNode[_], right: TypedExpressionNode[_]) =
@@ -139,6 +166,9 @@ object EqualityExpression {
       (List("and", "or").contains(node.operatorToken) &&
        node.children.forall(isEqualityExpression(_)))
   }
+
+  def from(tuple: (TypedExpressionNode[_], TypedExpressionNode[_])) =
+    new FlatEqualityExpression(tuple._1, tuple._2)
 }
 
 class InListExpression(left: ExpressionNode, right: ListExpressionNode, inclusion: Boolean) extends BinaryOperatorNodeLogicalBoolean(left, right, if(inclusion) "in" else "not in") {
