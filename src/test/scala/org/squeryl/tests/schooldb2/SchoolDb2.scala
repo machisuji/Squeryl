@@ -403,7 +403,7 @@ class SchoolDb2Tests extends QueryTester {
     val bs = a.bs
     val ast = bs.ast.asInstanceOf[QueryExpressionElements]
 
-    val andExp = ast.whereClause.get.asInstanceOf[EqualityExpression]
+    val andExp = ast.whereClause.get.asInstanceOf[BinaryOperatorNode]
 
     assert(andExp.left.isInstanceOf[ConstantExpressionNode[_]], "expected a ConstantExpressionNode[_] in the where clause :\n" + bs.statement)
 
