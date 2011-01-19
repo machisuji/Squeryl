@@ -99,9 +99,13 @@ trait ReferentialAction {
  * ForeignKeyDeclaration are to be manipulated only during the Schema definition
  * (this is why all public methods have the implicit arg (implicit ev: Schema))
  */
-class ForeignKeyDeclaration(val idWithinSchema: Int, val foreignKeyColumnName: String, val referencedPrimaryKey: String) {
-  @deprecated("Use foreignKeyColumnName instead")
-  final def foreingKeyColumnName = foreignKeyColumnName
+class ForeignKeyDeclaration(
+  val idWithinSchema: Int,
+  val foreignKeyColumnNames: List[String],
+  val primaryKeyColumnNames: List[String]
+) {
+  @deprecated("Use foreignKeyColumnNames instead")
+  final def foreingKeyColumnName = foreignKeyColumnNames
 
   private var _referentialActions: Option[(Option[ReferentialAction],Option[ReferentialAction])] = None
 

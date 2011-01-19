@@ -31,8 +31,8 @@ class MySQLAdapter extends DatabaseAdapter {
   override def timestampTypeDeclaration = "datetime"
   
   override def writeForeignKeyDeclaration(
-    foreignKeyTable: Table[_], foreignKeyColumnName: String,
-    primaryKeyTable: Table[_], primaryKeyColumnName: String,
+    foreignKeyTable: Table[_], foreignKeyColumnNames: List[String],
+    primaryKeyTable: Table[_], primaryKeyColumnNames: List[String],
     referentialAction1: Option[ReferentialAction],
     referentialAction2: Option[ReferentialAction],
     fkId: Int) = {
@@ -44,11 +44,11 @@ class MySQLAdapter extends DatabaseAdapter {
     sb.append(" add constraint ")
     sb.append(foreignKeyConstraintName(foreignKeyTable, fkId))
     sb.append(" foreign key (")
-    sb.append(foreignKeyColumnName)
+    sb.append(foreignKeyColumnNames.mkString(", "))
     sb.append(") references ")
     sb.append(primaryKeyTable.prefixedName)
     sb.append("(")
-    sb.append(primaryKeyColumnName)
+    sb.append(primaryKeyColumnNames.mkString(", "))
     sb.append(")")
     
     val f =  (ra:ReferentialAction) => {

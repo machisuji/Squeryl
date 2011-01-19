@@ -316,7 +316,7 @@ trait QueryDsl
      */
     private def _splitEquality(ee: EqualityExpression) = {
       val (leftMetaData, rightMetaData) = ee.fieldMetaData.head
-      if(leftMetaData.parentMetaData.clasz == aClass) {
+      if (leftMetaData.parentMetaData.clasz == aClass) {
         assert(rightMetaData.isIdFieldOfKeyedEntity)
         (rightMetaData, leftMetaData)
       } else {
@@ -330,10 +330,10 @@ trait QueryDsl
     private val (rightPkFmd, rightFkFmd) = _splitEquality(_rightEqualityExpr)
 
     val leftForeignKeyDeclaration =
-      schema._createForeignKeyDeclaration(leftFkFmd.columnName, leftPkFmd.columnName)
+      schema._createForeignKeyDeclaration(leftFkFmd.columnName :: Nil, leftPkFmd.columnName :: Nil)
 
     val rightForeignKeyDeclaration =
-      schema._createForeignKeyDeclaration(rightFkFmd.columnName, rightPkFmd.columnName)
+      schema._createForeignKeyDeclaration(rightFkFmd.columnName :: Nil, rightPkFmd.columnName :: Nil)
     
     private def _associate[T <: KeyedEntity[_]](o: T, m2m: ManyToMany[T,A]): A = {
       val aInst = m2m.assign(o)
@@ -499,7 +499,7 @@ trait QueryDsl
 
     schema._addRelation(this)
     
-    private val (_leftPkFmd, _rightFkFmd) = {
+    private val (fieldMetaData, _leftPkFmd, _rightFkFmd) = {
 
       var ee: Option[EqualityExpression] = None
 
@@ -510,11 +510,14 @@ trait QueryDsl
 
       val ee_ = ee.get
 
-      ee_.fieldMetaData.head
+      (ee_.fieldMetaData, ee_.fieldMetaData.map(_._1), ee_.fieldMetaData.map(_._2))
     }
 
-    val foreignKeyDeclaration =
-      schema._createForeignKeyDeclaration(_rightFkFmd.columnName, _leftPkFmd.columnName)
+    val foreignKeyDeclaration = {
+      val fkColumns: List[String] = _rightFkFmd.map(_.columnName).toList
+      val pkColumns: List[String] = _leftPkFmd.map(_.columnName).toList
+      schema._createForeignKeyDeclaration(fkColumns, pkColumns)
+    }
     
     def left(leftSide: O): OneToMany[M] = {
           
@@ -528,9 +531,10 @@ trait QueryDsl
         def assign(m: M) = {
           val m0 = m.asInstanceOf[AnyRef]
           val l0 = leftSide.asInstanceOf[AnyRef]
-          
-          val v = _leftPkFmd.get(l0)
-          _rightFkFmd.set(m0, v)
+          fieldMetaData.foreach { leftRight =>
+            val v = leftRight._1.get(l0)
+            leftRight._2.set(m0, v)
+          }
         }
 
         def associate(m: M)(implicit ev: M <:< KeyedEntity[_]) = {
@@ -549,9 +553,10 @@ trait QueryDsl
         def assign(one: O) = {
           val o = one.asInstanceOf[AnyRef]
           val r = rightSide.asInstanceOf[AnyRef]
-
-          val v = _rightFkFmd.get(r)
-          _leftPkFmd.set(o, v)
+          fieldMetaData.foreach { leftRight =>
+            val v = leftRight._2.get(r)
+            leftRight._1.set(o, v)
+          }
         }
 
         def delete =

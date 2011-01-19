@@ -130,7 +130,7 @@ class FlatEqualityExpression(
  * (equalNodes.size must be >= 2).
  */
 class CompositeEqualityExpression(
-  val equalNodes: Iterable[(TypedExpressionNode[_], TypedExpressionNode[_])]
+  val equalNodes: Iterable[(ExpressionNode, ExpressionNode)]
 ) extends BinaryOperatorNodeLogicalBoolean(
   Binary(equalNodes.head, "="),
   equalNodes.drop(2).foldLeft(Binary(equalNodes.tail.head, "=")) { (acc, node) =>
@@ -139,7 +139,11 @@ class CompositeEqualityExpression(
   "and"
 ) with EqualityExpression {
   def fieldMetaData = equalNodes.map { equal =>
-    (equal._1._fieldMetaData, equal._2._fieldMetaData)
+    equal match {
+      case (left: TypedExpressionNode[_], right: TypedExpressionNode[_]) =>
+        (left._fieldMetaData, right._fieldMetaData)
+      case _ => throw new IllegalStateException("Can only give meta data for TypedExpressionNodes.")
+    }
   }
 }
 
@@ -158,7 +162,7 @@ object EqualityExpression {
     new FlatEqualityExpression(leftRightTuple._1, leftRightTuple._2)
   }
 
-  def apply(leftRightTuples: Iterable[(TypedExpressionNode[_], TypedExpressionNode[_])]) =
+  def apply(leftRightTuples: Iterable[(ExpressionNode, ExpressionNode)]) =
     new CompositeEqualityExpression(leftRightTuples)
 }
 

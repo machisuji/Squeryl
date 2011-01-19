@@ -203,7 +203,7 @@ trait Schema {
 
     val unique = columnAttributes.find(_.isInstanceOf[Unique])
     val indexed = columnAttributes.find(_.isInstanceOf[Indexed])
-  
+    
     (unique, indexed) match {
       case (None,    None)                   => None
       case (Some(_), None)                   => Some(_dbAdapter.writeIndexDeclaration(cols, None,    name, true))
@@ -253,8 +253,8 @@ trait Schema {
       val fkDecl = fk._3
 
       _dbAdapter.writeForeignKeyDeclaration(
-         fk._1, fkDecl.foreignKeyColumnName,
-         fk._2, fkDecl.referencedPrimaryKey,
+         fk._1, fkDecl.foreignKeyColumnNames,
+         fk._2, fkDecl.primaryKeyColumnNames,
          fkDecl._referentialAction1,
          fkDecl._referentialAction2,
          fkDecl.idWithinSchema
@@ -373,8 +373,8 @@ trait Schema {
 
   private var _fkIdGen = 1 
 
-  private [squeryl] def _createForeignKeyDeclaration(fkColName: String, pkColName: String) = {
-    val fkd = new ForeignKeyDeclaration(_fkIdGen, fkColName, pkColName)
+  private [squeryl] def _createForeignKeyDeclaration(fkColNames: List[String], pkColNames: List[String]) = {
+    val fkd = new ForeignKeyDeclaration(_fkIdGen, fkColNames, pkColNames)
     _fkIdGen += 1
     applyDefaultForeignKeyPolicy(fkd)
     fkd

@@ -86,7 +86,7 @@ trait UniqueName extends KeyedEntity[CompositeKey2[String, String]] { this: Pers
   val firstName: String
   val lastName: String
   def id = compositeKey(firstName, lastName)
-  val addresses: OneToMany[UniquesAddress] = Population.uniquePersonToAddress.left(this)
+  lazy val addresses: OneToMany[UniquesAddress] = Population.uniquePersonToAddress.left(this)
 }
 
 class CommonsAddress(
@@ -102,7 +102,7 @@ class UniquesAddress(
   postalCode: String,
   val personId: CompositeKey2[String, String]
 ) extends Address(street, postalCode) {
-  val person: ManyToOne[Person with UniqueName] = Population.uniquePersonToAddress.right(this)
+  lazy val person: ManyToOne[Person with UniqueName] = Population.uniquePersonToAddress.right(this)
 }
 
 object Population extends Schema {

@@ -38,10 +38,8 @@ trait CompositeKey {
     _members.getOrElse(constantMembers)
 
   private [squeryl] def buildEquality(ck: CompositeKey): EqualityExpression = {
-
-    val it1 = members.map(_.asInstanceOf[TypedExpressionNode[_]])
-    val it2 = ck.members.map(_.asInstanceOf[TypedExpressionNode[_]])
-
+    val it1 = members
+    val it2 = ck.members
     EqualityExpression(it1 zip it2)
   }
 

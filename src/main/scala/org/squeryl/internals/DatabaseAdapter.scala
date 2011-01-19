@@ -613,7 +613,7 @@ trait DatabaseAdapter {
   def foreignKeyConstraintName(foreignKeyTable: Table[_], idWithinSchema: Int) =
     foreignKeyTable.prefixedName + "FK" + idWithinSchema
 
-  @deprecated("Use writeForeignKeyDeclaration instead")
+  @deprecated("Use writeForeignKeyDeclaration instead. Does not work for CompositeKeys as Primary Keys.")
   def writeForeingKeyDeclaration(
     foreingKeyTable: Table[_], foreingKeyColumnName: String,
     primaryKeyTable: Table[_], primaryKeyColumnName: String,
@@ -622,16 +622,16 @@ trait DatabaseAdapter {
     fkId: Int) =
       writeForeignKeyDeclaration(
 	foreingKeyTable,
-	foreingKeyColumnName,
+	foreingKeyColumnName :: Nil,
 	primaryKeyTable,
-	primaryKeyColumnName,
+	primaryKeyColumnName :: Nil,
 	referentialAction1: Option[ReferentialAction],
 	referentialAction2: Option[ReferentialAction],
 	fkId)
 
   def writeForeignKeyDeclaration(
-    foreignKeyTable: Table[_], foreignKeyColumnName: String,
-    primaryKeyTable: Table[_], primaryKeyColumnName: String,
+    foreignKeyTable: Table[_], foreignKeyColumnNames: List[String],
+    primaryKeyTable: Table[_], primaryKeyColumnNames: List[String],
     referentialAction1: Option[ReferentialAction],
     referentialAction2: Option[ReferentialAction],
     fkId: Int) = {
@@ -643,11 +643,11 @@ trait DatabaseAdapter {
     sb.append(" add constraint ")
     sb.append(foreignKeyConstraintName(foreignKeyTable, fkId))
     sb.append(" foreign key (")
-    sb.append(foreignKeyColumnName)
+    sb.append(foreignKeyColumnNames.mkString(", "))
     sb.append(") references ")
     sb.append(primaryKeyTable.prefixedName)
     sb.append("(")
-    sb.append(primaryKeyColumnName)
+    sb.append(primaryKeyColumnNames.mkString(", "))
     sb.append(")")
 
     val f =  (ra:ReferentialAction) => {
