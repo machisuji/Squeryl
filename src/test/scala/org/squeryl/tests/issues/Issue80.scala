@@ -115,9 +115,7 @@ object Population extends Schema {
   
   val commonPersonToAddress = {
     val rel = oneToManyRelation(commonPeople, commonsAddresses)
-    rel.via((person, address) => {
-        person.id === address.personId
-    })
+    rel.via((person, address) => person.id === address.personId)
   }
   val uniquePersonToAddress = {
     val rel = oneToManyRelation(uniquePeople, uniquesAddresses)

@@ -511,8 +511,6 @@ trait QueryDsl
       val ee_ = ee.get
 
       ee_.fieldMetaData.head
-      /*(ee_.left.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData,
-       ee_.right.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData)*/
     }
 
     val foreignKeyDeclaration =
