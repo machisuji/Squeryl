@@ -314,15 +314,16 @@ trait QueryDsl
      * returns a (FieldMetaData, FieldMetaData) where ._1 is the id of the KeyedEntity on the left or right side,
      * and where ._2 is the foreign key of the association object/table
      */
-    private def _splitEquality(ee: EqualityExpression) =
-      if(ee.left._fieldMetaData.parentMetaData.clasz == aClass) {
-        assert(ee.right._fieldMetaData.isIdFieldOfKeyedEntity)
-        (ee.right._fieldMetaData, ee.left._fieldMetaData)
+    private def _splitEquality(ee: EqualityExpression) = {
+      val (leftMetaData, rightMetaData) = ee.fieldMetaData.head
+      if(leftMetaData.parentMetaData.clasz == aClass) {
+        assert(rightMetaData.isIdFieldOfKeyedEntity)
+        (rightMetaData, leftMetaData)
+      } else {
+        assert(leftMetaData.isIdFieldOfKeyedEntity)
+        (leftMetaData, rightMetaData)
       }
-      else {
-        assert(ee.left._fieldMetaData.isIdFieldOfKeyedEntity)
-        (ee.left._fieldMetaData, ee.right._fieldMetaData)
-      }
+    }
 
     private val (leftPkFmd, leftFkFmd) = _splitEquality(_leftEqualityExpr)
 
@@ -508,9 +509,10 @@ trait QueryDsl
       })
 
       val ee_ = ee.get
-      
-      (ee_.left.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData,
-       ee_.right.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData)
+
+      ee_.fieldMetaData.head
+      /*(ee_.left.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData,
+       ee_.right.asInstanceOf[SelectElementReference[_]].selectElement.asInstanceOf[FieldSelectElement].fieldMataData)*/
     }
 
     val foreignKeyDeclaration =

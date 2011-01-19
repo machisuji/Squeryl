@@ -106,7 +106,28 @@ trait ListString extends ListExpressionNode {
   override def quotesElement = true
 }
 
-class EqualityExpression(override val left: TypedExpressionNode[_], override val right: TypedExpressionNode[_]) extends BinaryOperatorNodeLogicalBoolean(left, right, "=")
+// class EqualityExpression(/*override val */left: TypedExpressionNode[_], /*override val */right: TypedExpressionNode[_]) extends BinaryOperatorNodeLogicalBoolean(left, right, "=")
+trait EqualityExpression extends ExpressionNode with LogicalBoolean {
+  def fieldMetaData: Iterable[(FieldMetaData, FieldMetaData)]
+}
+
+/**An EqualityExpression with only one clause, such as "x = y".
+ */
+class FlatEqualityExpression(
+  override val left: TypedExpressionNode[_],
+  override val right: TypedExpressionNode[_]
+) extends BinaryOperatorNodeLogicalBoolean(left, right, "=") with EqualityExpression {
+  def fieldMetaData = (left._fieldMetaData, right._fieldMetaData) :: Nil
+}
+
+/**An EqualityExpression with several clauses, such as "(x = y) AND (y = z) AND (x = z)."
+ */
+class CompositeEqualityExpression
+
+object EqualityExpression {
+  def apply(left: TypedExpressionNode[_], right: TypedExpressionNode[_]) =
+    new FlatEqualityExpression(left, right)
+}
 
 class InListExpression(left: ExpressionNode, right: ListExpressionNode, inclusion: Boolean) extends BinaryOperatorNodeLogicalBoolean(left, right, if(inclusion) "in" else "not in") {
 
