@@ -105,7 +105,7 @@ class CommonsAddress(
 class UniquesAddress(
   street: String,
   postalCode: String,
-  var personId: CompositeKey2[String, String]
+  val personId: CompositeKey2[String, String]
 ) extends Address(street, postalCode) {
   lazy val person: ManyToOne[UniquePerson] = Population.uniquePersonToAddress.right(this)
 }
@@ -125,10 +125,6 @@ object Population extends Schema {
   val uniquePersonToAddress = {
     val rel = oneToManyRelation(uniquePeople, uniquesAddresses)
     rel.via { (person, address) =>
-      if (address.personId == null) {
-        println("personId null, set to default")
-        address.personId = new CompositeKey2[String, String]("", "")
-      }
       person.id === address.personId
     }
   }
