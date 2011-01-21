@@ -47,5 +47,9 @@ class SquerylProject(info: ProjectInfo) extends DefaultProject(info) {
   
   //val specs = "org.scala-tools.testing" %% "specs" % "1.6.5" % "provided"
   
-  val specs = "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5" % "provided"  
+  val specs = "org.scala-tools.testing" % "specs_2.8.0" % "1.6.5" % "provided"
+  
+  val scalaToolsSnapshots = ScalaToolsSnapshots
+  val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT" % "test"
 }
+
