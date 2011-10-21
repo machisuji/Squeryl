@@ -34,12 +34,13 @@ trait CompositeKey {
 
   protected def constantMembers: Iterable[ExpressionNode]
 
-  protected def members: Iterable[ExpressionNode] =
+  protected def members: Iterable[ExpressionNode] = {
     _members.getOrElse(constantMembers)
+  }
 
   private [squeryl] def buildEquality(ck: CompositeKey): EqualityExpression = {
-    val it1 = members
-    val it2 = ck.members
+    val it1 = members.toList
+    val it2 = ck.members.toList
     EqualityExpression(it1 zip it2)
   }
 

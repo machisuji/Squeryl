@@ -20,6 +20,7 @@ import net.sf.cglib.proxy._
 import collection.mutable.{HashSet, ArrayBuffer}
 import org.squeryl.dsl.ast._
 import org.squeryl.dsl.CompositeKey
+import org.squeryl.Reflection._
 
 object FieldReferenceLinker {
 
@@ -278,22 +279,21 @@ object FieldReferenceLinker {
         viewExpressionNode.view.findFieldMetaDataForProperty(m.getName)
 
       def intercept(o: Object, m: Method, args: Array[Object], proxy: MethodProxy): Object = {
-
         lazy val fmd = fmd4Method(m)
+        val isComposite = classOf[CompositeKey].isAssignableFrom(m.getReturnType)
 
-        val isComposite =
-          classOf[CompositeKey].isAssignableFrom(m.getReturnType)
-
-        if(isComposite)
+        if (isComposite) {
           _compositeKeyMembers.set(Some(new ArrayBuffer[SelectElement]))
-
-        var res = proxy.invokeSuper(o, args);
-
+        }
+        if (o.getClass.getName.toLowerCase.contains("uniquesaddress") && m.getName == "personId" || (false &&
+            o.getClass.getName.toLowerCase.contains("uniqueperson") && m.getName == "id")) {
+          println("Gotcha")
+        }
+        var res = proxy.invokeSuper(o, args); // !
         if(isComposite) {
           val ck = res.asInstanceOf[CompositeKey]
           ck._members = Some(_compositeKeyMembers.get.get.map(new SelectElementReference[Any](_)(NoOpOutMapper)))
           ck._propertyName = Some(m.getName)
-          //_compositeKey.set(Some(_compositeKeyMembers.get.get.map(new SelectElementReference[Any](_)(NoOpOutMapper))))
           _compositeKeyMembers.set(None)
         }
 
@@ -311,7 +311,6 @@ object FieldReferenceLinker {
           else
             _compositeKeyMembers.get.get.append(viewExpressionNode.getOrCreateSelectElement(fmd.get))
         }
-        
         res
       }          
   }

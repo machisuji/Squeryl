@@ -494,13 +494,37 @@ trait QueryDsl
 
   }
 
+  implicit def reflection(obj: Any) = new {
+    def getAttribute(name: String): Option[Any] = {
+      if (obj == null) return None
+      val cl = obj.asInstanceOf[AnyRef].getClass
+      try {
+        val getter = cl.getMethod(name)
+        Some(getter.invoke(obj))
+      } catch {
+        case ex: NoSuchMethodException => None
+        case ex: Exception => Some(ex)
+      }
+    }
+    def listFields {
+      if (obj == null) return
+      val cl = obj.asInstanceOf[AnyRef].getClass
+      cl.getFields.foreach(println(_))
+    }
+    def listMethods {
+      if (obj == null) return
+      val cl = obj.asInstanceOf[AnyRef].getClass
+      cl.getMethods.foreach(println(_))
+    }
+  }
+
   class OneToManyRelationImpl[O <: KeyedEntity[_],M](val leftTable: Table[O], val rightTable: Table[M], f: (O,M)=>EqualityExpression, schema: Schema)
     extends OneToManyRelation[O,M] {
 
     schema._addRelation(this)
     
     private val (fieldMetaData, _leftPkFmd, _rightFkFmd) = {
-
+      import org.squeryl.Reflection._
       var ee: Option[EqualityExpression] = None
 
       from(leftTable,rightTable)((o,m) => {
@@ -567,8 +591,9 @@ trait QueryDsl
 
   // Composite key syntactic sugar :
 
-  def compositeKey[A1,A2](a1: A1, a2: A2) =
+  def compositeKey[A1,A2](a1: A1, a2: A2) = {
     new CompositeKey2(a1, a2)
+  }
 
   def compositeKey[A1,A2,A3](a1: A1, a2: A2, a3: A3) =
     new CompositeKey3(a1, a2, a3)

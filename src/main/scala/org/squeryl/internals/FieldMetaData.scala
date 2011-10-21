@@ -516,7 +516,12 @@ object FieldMetaData {
     def handleTimestampType = new java.sql.Timestamp(0)
     def handleBinaryType = new Array[Byte](0)
     def handleEnumerationValueType = DummyE.Z
-    def handleUnknownType(c: Class[_]) = null
+    def handleUnknownType(c: Class[_]) = {
+      import org.squeryl.dsl.CompositeKey2
+      if (c.getName.toLowerCase.contains("compositekey2")) {
+        new CompositeKey2[String, String]("foo", "bar")
+      } else null
+    }
   }
 
   object DummyE extends Enumeration {
