@@ -29,6 +29,8 @@ trait Schema {
 
   protected implicit def thisSchema = this
 
+  val errorHandler: Option[(SQLException, String, Session) => Unit] = None
+
   /**
    * Contains all Table[_]s in this shema, and also all ManyToManyRelation[_,_,_]s (since they are also Table[_]s
    */
@@ -231,7 +233,7 @@ trait Schema {
     for(fk <- _foreignKeyConstraints)
       _executeDdl(fk)
 
-  private def _executeDdl(statement: String) = {
+  private def _executeDdl(statement: String): Boolean = {
 
     val cs = Session.currentSession
     cs.log(statement)
@@ -241,7 +243,9 @@ trait Schema {
       s.execute(statement)
     }
     catch {
-      case e:SQLException => throw new RuntimeException("error executing " + statement + "\n" + e, e)
+      case e: SQLException =>
+        errorHandler.map(_ apply (e, statement, cs)).map(_ => false).getOrElse(
+          throw new RuntimeException("error executing " + statement + "\n" + e, e))
     }
     finally {
       s.close
