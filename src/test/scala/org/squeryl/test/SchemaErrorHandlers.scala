@@ -33,7 +33,10 @@ object FlexibleSupersetSchema extends Schema {
   val apples = table[Apple]
   val oranges = table[Orange]
 
-  override val errorHandler = Some((e: SQLException, stmnt: String, session: Session) => ())
+  override val errorHandler = Some((e: SQLException, stmnt: String, session: Session) => {
+    val exists = "(?i)table.*already\\s*exists".r
+    (exists findFirstIn e.getMessage).map(_ => ()).getOrElse(throw e)
+  })
 }
 
 trait SchemaErrorHandlers extends FunSuite with ShouldMatchers with BeforeAndAfterAll with DBConnector {
