@@ -29,7 +29,9 @@ trait Schema {
 
   protected implicit def thisSchema = this
 
-  val errorHandler: Option[(SQLException, String, Session) => Unit] = None
+  def handleError(e: SQLException, statement: String, session: Session) {
+    throw new RuntimeException("error executing " + statement + "\n" + e, e)
+  }
 
   /**
    * Contains all Table[_]s in this shema, and also all ManyToManyRelation[_,_,_]s (since they are also Table[_]s
@@ -243,9 +245,10 @@ trait Schema {
       s.execute(statement)
     }
     catch {
-      case e: SQLException =>
-        errorHandler.map(_ apply (e, statement, cs)).map(_ => false).getOrElse(
-          throw new RuntimeException("error executing " + statement + "\n" + e, e))
+      case e: SQLException => {
+        handleError(e, statement, cs)
+        false
+      }
     }
     finally {
       s.close
